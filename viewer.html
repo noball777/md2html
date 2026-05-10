@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>md2html_folio</title>
+  <link id="hljs-theme" rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <style>
+    /* ── Variables ── */
+    :root {
+      --bg:          #ffffff;
+      --bg-sub:      #f6f8fa;
+      --bg-code:     #f6f8fa;
+      --text:        #24292e;
+      --text-muted:  #57606a;
+      --border:      #d0d7de;
+      --link:        #0969da;
+      --heading:     #1f2328;
+      --comment-bg:  #fff8c5;
+      --comment-bar: #d4a72c;
+      --toc-active:  #0969da;
+      --shadow:      rgba(31,35,40,0.12);
+      --accent:      #0969da;
+      --radius:      6px;
+    }
+    [data-theme="dark"] {
+      --bg:          #0d1117;
+      --bg-sub:      #161b22;
+      --bg-code:     #161b22;
+      --text:        #e6edf3;
+      --text-muted:  #8b949e;
+      --border:      #30363d;
+      --link:        #58a6ff;
+      --heading:     #f0f6fc;
+      --comment-bg:  #272211;
+      --comment-bar: #9e6c00;
+      --toc-active:  #58a6ff;
+      --shadow:      rgba(1,4,9,0.4);
+      --accent:      #58a6ff;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.75;
+      color: var(--text);
+      background: var(--bg);
+      transition: background .2s, color .2s;
+    }
+
+    /* ── Shared Buttons ── */
+    .btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 14px;
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+      transition: background .15s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--border); }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-primary:hover { filter: brightness(1.15); }
+    .btn-danger { color: #cf222e; border-color: #cf222e; background: transparent; }
+    .btn-danger:hover { background: #ffebe9; }
+    [data-theme="dark"] .btn-danger:hover { background: #3b1219; }
+
+    /* ══════════════════════════════════════
+       HOME PAGE
+    ══════════════════════════════════════ */
+    #page-home { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* Home header */
+    #home-header {
+      height: 56px;
+      background: var(--bg-sub);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 12px;
+    }
+    #home-logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--heading);
+      flex: 1;
+    }
+    #home-logo span { font-weight: 400; color: var(--text-muted); font-size: 15px; margin-left: 6px; }
+
+    /* Home main */
+    #home-main {
+      flex: 1;
+      max-width: 960px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 40px;
+    }
+
+    /* Hero drop zone */
+    #home-hero {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 48px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      transition: background .15s, border-color .15s;
+      cursor: default;
+    }
+    #home-hero.over {
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      border-color: var(--accent);
+    }
+    #home-hero .hero-icon { font-size: 48px; opacity: .4; }
+    #home-hero p { font-size: 15px; color: var(--text-muted); }
+    #btn-open-md { font-size: 15px; padding: 10px 28px; }
+
+    /* Folder status */
+    #folder-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: var(--bg-sub);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    #folder-bar .folder-icon { font-size: 16px; }
+    #folder-bar .folder-path {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #folder-bar.unset .folder-path { font-style: italic; }
+
+    /* Library */
+    #lib-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    #lib-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    #lib-empty {
+      text-align: center;
+      padding: 48px 0;
+      color: var(--text-muted);
+      font-size: 14px;
+      display: none;
+    }
+    #lib-empty p { margin-top: 8px; }
+
+    .lib-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      cursor: pointer;
+      transition: box-shadow .15s, border-color .15s;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .lib-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+    .lib-card-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--heading);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .lib-card-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .lib-card-comment-badge {
+      background: var(--comment-bar);
+      color: #fff;
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 10px;
+    }
+    .lib-card-preview {
+      font-size: 12px;
+      color: var(--text-muted);
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      line-height: 1.5;
+    }
+    .lib-card-del {
+      position: absolute;
+      top: 8px; right: 8px;
+      background: none; border: none;
+      font-size: 14px; color: var(--text-muted);
+      cursor: pointer; opacity: 0;
+      transition: opacity .15s, color .15s;
+      padding: 2px 5px; border-radius: 4px;
+    }
+    .lib-card { position: relative; }
+    .lib-card:hover .lib-card-del { opacity: 1; }
+    .lib-card-del:hover { color: #cf222e; background: color-mix(in srgb, #cf222e 10%, var(--bg)); }
+
+    /* ══════════════════════════════════════
+       VIEWER PAGE
+    ══════════════════════════════════════ */
+    #page-viewer { display: none; }
+
+    /* Viewer topbar */
+    #topbar {
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: 52px;
+      background: var(--bg-sub);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 8px;
+      z-index: 100;
+    }
+    #topbar-filename {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #btn-save-status {
+      font-size: 11px;
+      color: #1a7f37;
+      padding: 0 4px;
+      display: none;
+    }
+    [data-theme="dark"] #btn-save-status { color: #3fb950; }
+
+    /* Viewer layout */
+    #v-layout {
+      display: flex;
+      padding-top: 52px;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    #sidebar {
+      width: 252px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 52px;
+      height: calc(100vh - 52px);
+      overflow-y: auto;
+      background: var(--bg-sub);
+      border-right: 1px solid var(--border);
+      padding: 16px 0 32px;
+    }
+    #toc-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 0 16px 10px;
+    }
+    #toc { list-style: none; }
+    .toc-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      cursor: pointer;
+      transition: color .12s, background .12s;
+    }
+    .toc-item:hover { color: var(--text); background: color-mix(in srgb, var(--border) 50%, transparent); }
+    .toc-item.active { color: var(--toc-active); border-left-color: var(--toc-active); font-weight: 600; }
+    .toc-item.h1 { font-weight: 600; }
+    .toc-item.h2 { padding-left: 26px; }
+    .toc-item.h3 { padding-left: 38px; font-size: 12px; }
+    .toc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--comment-bar); flex-shrink: 0; }
+    .toc-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Content area */
+    #v-main { flex: 1; min-width: 0; padding: 48px 56px 80px; }
+
+    /* Heading wrapper */
+    .heading-wrapper {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      margin: 1.6em 0 .5em;
+    }
+    .heading-wrapper > h1,
+    .heading-wrapper > h2,
+    .heading-wrapper > h3,
+    .heading-wrapper > h4,
+    .heading-wrapper > h5,
+    .heading-wrapper > h6 { margin: 0; flex: 1; color: var(--heading); line-height: 1.35; }
+    #content h1 { font-size: 2em;   padding-bottom: .3em; border-bottom: 1px solid var(--border); }
+    #content h2 { font-size: 1.5em; padding-bottom: .3em; border-bottom: 1px solid var(--border); }
+    #content h3 { font-size: 1.25em; }
+    #content h4 { font-size: 1em; }
+
+    .anchor-btn {
+      opacity: 0;
+      background: none; border: none;
+      font-size: .85em; color: var(--text-muted);
+      cursor: pointer; padding: 3px;
+      align-self: center;
+      transition: opacity .15s;
+      flex-shrink: 0;
+    }
+    .heading-wrapper:hover .anchor-btn { opacity: 1; }
+
+    .comment-toggle-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 11px; color: var(--text-muted);
+      cursor: pointer; padding: 2px 7px;
+      align-self: center;
+      transition: background .15s, color .15s, border-color .15s;
+      flex-shrink: 0; white-space: nowrap;
+    }
+    .comment-toggle-btn:hover { color: var(--text); border-color: var(--text-muted); }
+    .comment-toggle-btn.has-comment { color: var(--comment-bar); border-color: var(--comment-bar); }
+
+    /* Comment box */
+    .comment-box {
+      background: var(--comment-bg);
+      border-left: 3px solid var(--comment-bar);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 10px 12px 10px 16px;
+      margin: 4px 0 20px;
+      font-size: 14px;
+      white-space: pre-wrap;
+      color: var(--text);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .comment-box-text { flex: 1; }
+    .comment-box-del {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-muted);
+      opacity: .4;
+      padding: 0 2px;
+      transition: opacity .15s, color .15s;
+      line-height: 1.5;
+    }
+    .comment-box-del:hover { opacity: 1; color: #cf222e; }
+
+    /* Content typography */
+    #content { display: none; }
+    #content > *:first-child { margin-top: 0 !important; }
+    #content p   { margin: .75em 0; }
+    #content a   { color: var(--link); }
+    #content img { max-width: 100%; border-radius: var(--radius); }
+    #content ul, #content ol { padding-left: 2em; margin: .5em 0; }
+    #content li  { margin: .2em 0; }
+    #content blockquote { border-left: 4px solid var(--border); padding: .5em 1em; color: var(--text-muted); margin: 1em 0; }
+    #content hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+    #content table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 14px; }
+    #content th, #content td { border: 1px solid var(--border); padding: 7px 12px; }
+    #content th { background: var(--bg-sub); font-weight: 600; text-align: left; }
+    #content tr:nth-child(even) td { background: var(--bg-sub); }
+    #content input[type="checkbox"] { margin-right: 5px; }
+    #content :not(pre) > code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+      font-size: .85em;
+      background: var(--bg-code); border: 1px solid var(--border);
+      border-radius: 3px; padding: .15em .4em;
+    }
+
+    /* Code blocks */
+    .code-wrapper { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin: 1em 0; }
+    .code-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 14px; background: var(--border);
+      font-size: 12px; color: var(--text-muted);
+      font-family: 'SFMono-Regular', Consolas, monospace;
+    }
+    .copy-btn { background: none; border: 1px solid var(--text-muted); border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; color: var(--text-muted); }
+    .copy-btn:hover { color: var(--text); border-color: var(--text); }
+    .copy-btn.copied { color: #1a7f37; border-color: #1a7f37; }
+    [data-theme="dark"] .copy-btn.copied { color: #3fb950; border-color: #3fb950; }
+    #content pre { margin: 0; }
+    #content pre code.hljs { padding: 16px 14px; font-size: 13px; }
+
+    /* Mermaid */
+    .mermaid { display: flex; justify-content: center; padding: 20px; overflow-x: auto; }
+
+    /* ── Comment modal ── */
+    #modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    #modal-overlay.open { display: flex; }
+    #modal {
+      background: var(--bg); border-radius: 12px; padding: 24px;
+      width: 500px; max-width: calc(100vw - 32px);
+      box-shadow: 0 8px 32px var(--shadow);
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    #modal h3 { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+    #modal-textarea {
+      width: 100%; border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 10px; font-size: 14px; font-family: inherit;
+      background: var(--bg); color: var(--text); resize: vertical; min-height: 110px;
+      outline: none; transition: border-color .15s;
+    }
+    #modal-textarea:focus { border-color: var(--toc-active); }
+    #modal-actions { display: flex; gap: 8px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #1f2328; color: #fff; border-radius: 8px;
+      padding: 10px 20px; font-size: 13px; z-index: 300;
+      opacity: 0; transition: opacity .2s; pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
+    [data-theme="dark"] #toast { background: #e6edf3; color: #1f2328; }
+
+    /* ── AI Settings Modal ── */
+    #ai-settings-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.5); z-index: 200;
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    #ai-settings-overlay.open { display: flex; }
+    #ai-settings-modal {
+      background: var(--bg); border-radius: 12px;
+      width: 520px; max-width: 100%; max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px var(--shadow);
+      display: flex; flex-direction: column;
+    }
+    .ai-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px 0;
+    }
+    .ai-modal-header h2 { font-size: 16px; font-weight: 700; }
+    .ai-modal-close {
+      background: none; border: none; font-size: 18px;
+      color: var(--text-muted); cursor: pointer; padding: 4px;
+    }
+    .ai-notice {
+      margin: 16px 24px;
+      background: color-mix(in srgb, #e3a000 12%, var(--bg));
+      border: 1px solid #e3a000;
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-size: 13px;
+    }
+    [data-theme="dark"] .ai-notice { background: color-mix(in srgb, #e3a000 8%, var(--bg)); }
+    .ai-notice-title { font-weight: 700; margin-bottom: 8px; color: #9a6700; }
+    [data-theme="dark"] .ai-notice-title { color: #e3a000; }
+    .ai-notice ul { padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+    .ai-notice li { line-height: 1.5; }
+    .ai-modal-body { padding: 0 24px 24px; display: flex; flex-direction: column; gap: 16px; }
+    .ai-field { display: flex; flex-direction: column; gap: 6px; }
+    .ai-field label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+    .ai-field input[type="text"],
+    .ai-field input[type="password"] {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 8px 10px; font-size: 14px; font-family: inherit;
+      background: var(--bg); color: var(--text); outline: none;
+      transition: border-color .15s;
+    }
+    .ai-field input:focus { border-color: var(--accent); }
+    .ai-field-hint { font-size: 12px; color: var(--text-muted); }
+    .ai-field-hint a { color: var(--link); }
+    .ai-provider-grid {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .ai-provider-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .ai-provider-item:hover { border-color: var(--accent); }
+    .ai-provider-item input[type="radio"] { accent-color: var(--accent); }
+    .ai-provider-item.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg)); }
+    .ai-provider-name { font-weight: 600; font-size: 14px; flex: 1; }
+    .ai-verified { font-size: 11px; color: #1a7f37; background: #dafbe1; border-radius: 10px; padding: 2px 8px; }
+    [data-theme="dark"] .ai-verified { color: #3fb950; background: #122320; }
+    .ai-modal-footer { display: flex; gap: 8px; justify-content: flex-end; padding: 0 24px 24px; }
+
+    /* ── AI Float Panel ── */
+    #ai-panel {
+      display: none; position: fixed;
+      bottom: 20px; right: 20px;
+      width: 360px; max-height: 75vh;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 12px; box-shadow: 0 8px 32px var(--shadow);
+      flex-direction: column; z-index: 90; overflow: hidden;
+    }
+    #ai-panel.open { display: flex; }
+    .ai-panel-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 14px;
+      background: var(--bg-sub); border-bottom: 1px solid var(--border);
+      font-size: 13px; font-weight: 600;
+    }
+    .ai-panel-provider { font-size: 11px; color: var(--text-muted); flex: 1; }
+    .ai-panel-close { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 16px; }
+    .ai-quick-actions {
+      display: flex; gap: 6px; padding: 10px 12px;
+      border-bottom: 1px solid var(--border); flex-wrap: wrap;
+    }
+    .ai-quick-btn { padding: 4px 10px; font-size: 12px; }
+    .ai-panel-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    #ai-prompt {
+      width: 100%; border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 8px 10px; font-size: 13px; font-family: inherit;
+      background: var(--bg); color: var(--text); resize: vertical; min-height: 72px;
+      outline: none; transition: border-color .15s;
+    }
+    #ai-prompt:focus { border-color: var(--accent); }
+    .ai-send-row { display: flex; justify-content: flex-end; gap: 6px; }
+    #ai-loading { color: var(--text-muted); font-size: 13px; text-align: center; padding: 8px; display: none; }
+    #ai-response-area { display: none; flex-direction: column; gap: 8px; }
+    #ai-response-text {
+      background: var(--bg-sub); border-radius: var(--radius);
+      padding: 10px; font-size: 13px; white-space: pre-wrap;
+      max-height: 240px; overflow-y: auto; border: 1px solid var(--border);
+    }
+    .ai-response-actions { display: flex; gap: 6px; }
+
+    /* ── Print ── */
+    @media print {
+      #topbar, #sidebar, .anchor-btn, .comment-toggle-btn { display: none !important; }
+      #v-layout { padding-top: 0; }
+      #v-main { padding: 24px; }
+      .comment-box { break-inside: avoid; border: 1px solid #ccc; }
+      .code-wrapper { break-inside: avoid; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 800px) {
+      #sidebar { display: none; }
+      #v-main { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     HOME PAGE
+══════════════════════════════════════ -->
+<div id="page-home">
+  <header id="home-header">
+    <div id="home-logo">md2html_folio <span>β</span></div>
+    <button class="btn" id="btn-ai-settings-home">🤖 AI設定</button>
+    <button class="btn" id="btn-theme-home">ダーク</button>
+  </header>
+
+  <main id="home-main">
+    <!-- Hero / Drop zone -->
+    <div id="home-hero">
+      <div class="hero-icon">📄</div>
+      <p>MDファイルをここにドロップ</p>
+      <button class="btn btn-primary" id="btn-open-md">ファイルを開く</button>
+    </div>
+
+    <!-- Folder status bar -->
+    <div id="folder-bar" class="unset">
+      <span class="folder-icon">📁</span>
+      <span class="folder-path" id="folder-path-text">保存フォルダ未設定</span>
+      <button class="btn" id="btn-folder-pick">設定する</button>
+    </div>
+
+    <!-- Library -->
+    <div id="lib-section">
+      <div id="lib-title">最近のファイル</div>
+      <div id="lib-grid"></div>
+      <div id="lib-empty">
+        <div style="font-size:36px;opacity:.3">🗂️</div>
+        <p id="lib-empty-msg">保存フォルダを設定してMDを保存すると、ここに表示されます</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════
+     VIEWER PAGE
+══════════════════════════════════════ -->
+<div id="page-viewer">
+  <div id="topbar">
+    <button class="btn" id="btn-back">← ホーム</button>
+    <span id="topbar-filename"></span>
+    <span id="btn-save-status">✓ 保存済み</span>
+    <button class="btn btn-primary" id="btn-save">💾 保存</button>
+    <button class="btn" id="btn-export">書き出し</button>
+    <button class="btn" id="btn-ai-toggle" style="display:none">🤖 AI</button>
+    <button class="btn" id="btn-ai-settings">AI設定</button>
+    <button class="btn" id="btn-print">印刷</button>
+    <button class="btn" id="btn-theme">ダーク</button>
+  </div>
+
+  <div id="v-layout">
+    <aside id="sidebar">
+      <div id="toc-label">目次</div>
+      <ul id="toc"></ul>
+    </aside>
+    <main id="v-main">
+      <div id="content"></div>
+    </main>
+  </div>
+</div>
+
+<!-- AI Float Panel -->
+<div id="ai-panel">
+  <div class="ai-panel-header">
+    <span>🤖 AI アシスト</span>
+    <span class="ai-panel-provider" id="ai-panel-provider"></span>
+    <button class="ai-panel-close" id="btn-ai-panel-close">✕</button>
+  </div>
+  <div class="ai-quick-actions">
+    <button class="btn ai-quick-btn" data-action="summary">要約</button>
+    <button class="btn ai-quick-btn" data-action="bullets">箇条書き</button>
+  </div>
+  <div class="ai-panel-body">
+    <textarea id="ai-prompt" placeholder="AIへの指示を入力... (例: 問題点を指摘して)"></textarea>
+    <div class="ai-send-row">
+      <button class="btn btn-primary" id="btn-ai-send">送信</button>
+    </div>
+    <div id="ai-loading">考え中...</div>
+    <div id="ai-response-area">
+      <div id="ai-response-text"></div>
+      <div class="ai-response-actions">
+        <button class="btn" id="btn-ai-copy">コピー</button>
+        <button class="btn btn-primary" id="btn-ai-insert">MDの末尾に挿入</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     COMMENT MODAL (shared)
+══════════════════════════════════════ -->
+<div id="modal-overlay" role="dialog" aria-modal="true">
+  <div id="modal">
+    <h3 id="modal-heading"></h3>
+    <textarea id="modal-textarea" placeholder="このセクションへのメモを入力... (Ctrl+Enter で保存)"></textarea>
+    <div id="modal-actions">
+      <button class="btn btn-danger" id="btn-delete" style="display:none">削除</button>
+      <button class="btn" id="btn-cancel">キャンセル</button>
+      <button class="btn btn-primary" id="btn-modal-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI Settings Modal -->
+<div id="ai-settings-overlay">
+  <div id="ai-settings-modal">
+    <div class="ai-modal-header">
+      <h2>🤖 AI連携設定</h2>
+      <button class="ai-modal-close" id="btn-ai-settings-close">✕</button>
+    </div>
+
+    <div class="ai-notice">
+      <div class="ai-notice-title">⚠️ AI機能について（必ずお読みください）</div>
+      <ul>
+        <li>AI機能は<strong>オプション</strong>です。設定しなくても本アプリは全て使えます。</li>
+        <li>利用には各サービスの<strong>APIキーが必要</strong>です（有料の場合があります）。</li>
+        <li>精度の高い結果を得るには、MDをAIサービスに直接読み込ませる方が効果的な場合があります。</li>
+        <li>動作確認済み以外のプロバイダーのご利用は<strong>自己責任</strong>でお願いします。</li>
+        <li>APIキーはお使いのブラウザにのみ保存され、外部へは送信されません。</li>
+      </ul>
+    </div>
+
+    <div class="ai-modal-body">
+      <div class="ai-field">
+        <label>プロバイダー</label>
+        <div class="ai-provider-grid" id="ai-provider-grid">
+          <label class="ai-provider-item" id="prov-none">
+            <input type="radio" name="ai-provider" value="none">
+            <span class="ai-provider-name">使用しない</span>
+          </label>
+          <label class="ai-provider-item" id="prov-openai">
+            <input type="radio" name="ai-provider" value="openai">
+            <span class="ai-provider-name">OpenAI (ChatGPT)</span>
+            <span class="ai-verified">✅ 確認済み</span>
+          </label>
+          <label class="ai-provider-item" id="prov-gemini">
+            <input type="radio" name="ai-provider" value="gemini">
+            <span class="ai-provider-name">Google Gemini</span>
+            <span class="ai-verified">✅ 確認済み</span>
+          </label>
+          <label class="ai-provider-item" id="prov-lmstudio">
+            <input type="radio" name="ai-provider" value="lmstudio">
+            <span class="ai-provider-name">LM Studio (ローカル)</span>
+            <span class="ai-verified">✅ 確認済み</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="ai-field" id="ai-key-field">
+        <label>APIキー</label>
+        <input type="password" id="ai-api-key" placeholder="APIキーを入力...">
+        <div class="ai-field-hint"><a id="ai-key-link" href="#" target="_blank">このサービスのAPIキーを取得する →</a></div>
+      </div>
+
+      <div class="ai-field" id="ai-model-field">
+        <label>モデル</label>
+        <input type="text" id="ai-model" placeholder="モデル名">
+        <div class="ai-field-hint" id="ai-model-hint"></div>
+      </div>
+
+      <div class="ai-field" id="ai-url-field" style="display:none">
+        <label>ベースURL</label>
+        <input type="text" id="ai-base-url" value="http://localhost:1234/v1">
+        <div class="ai-field-hint">
+          LM Studio → Local Server タブ → Start Server を押してから使用してください。<br>
+          モデルも読み込み済みであることを確認してください。
+        </div>
+        <button class="btn" id="btn-ai-test" style="margin-top:6px;width:fit-content">接続テスト</button>
+        <div id="ai-test-result" style="font-size:12px;margin-top:4px;display:none"></div>
+      </div>
+    </div>
+
+    <div class="ai-modal-footer">
+      <button class="btn" id="btn-ai-cancel">キャンセル</button>
+      <button class="btn btn-primary" id="btn-ai-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- File input -->
+<input type="file" id="file-input" accept=".md,.markdown,.txt" style="display:none">
+
+<!-- CDN Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── State ────────────────────────────────────────────────────
+  let folderHandle   = null;
+  let pendingHandle  = null;   // stored handle awaiting permission
+  let currentFile    = null;
+  let currentMd      = null;
+  let comments       = {};
+  let dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  let scrollObserver = null;
+  let modalSectionId = null;
+
+  const LS_KEY  = (f) => 'mdv_comments_' + f;
+
+  // ── IndexedDB helpers ────────────────────────────────────────
+  let _db = null;
+  function openDb() {
+    if (_db) return Promise.resolve(_db);
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('mdviewer', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onsuccess = () => { _db = r.result; res(_db); };
+      r.onerror   = () => rej(r.error);
+    });
+  }
+  async function dbGet(key) {
+    const db = await openDb();
+    return new Promise((res, rej) => {
+      const r = db.transaction('kv','readonly').objectStore('kv').get(key);
+      r.onsuccess = () => res(r.result);
+      r.onerror   = () => rej(r.error);
+    });
+  }
+  async function dbPut(key, val) {
+    const db = await openDb();
+    return new Promise((res, rej) => {
+      const r = db.transaction('kv','readwrite').objectStore('kv').put(val, key);
+      r.onsuccess = () => res();
+      r.onerror   = () => rej(r.error);
+    });
+  }
+
+  // ── Theme ────────────────────────────────────────────────────
+  const HLJS_LIGHT = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css';
+  const HLJS_DARK  = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';
+
+  function applyTheme() {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    document.getElementById('hljs-theme').href = dark ? HLJS_DARK : HLJS_LIGHT;
+    document.getElementById('btn-theme').textContent = dark ? 'ライト' : 'ダーク';
+    document.getElementById('btn-theme-home').textContent = dark ? 'ライト' : 'ダーク';
+    mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default' });
+    if (currentMd) reRenderMermaid();
+  }
+
+  document.getElementById('btn-theme').addEventListener('click', () => { dark = !dark; applyTheme(); });
+  document.getElementById('btn-theme-home').addEventListener('click', () => { dark = !dark; applyTheme(); });
+
+  // ── Page switching ───────────────────────────────────────────
+  function showHome() {
+    document.getElementById('page-home').style.display = '';
+    document.getElementById('page-viewer').style.display = 'none';
+    loadLibrary();
+  }
+  function showViewer() {
+    document.getElementById('page-home').style.display = 'none';
+    document.getElementById('page-viewer').style.display = 'block';
+  }
+
+  document.getElementById('btn-back').addEventListener('click', () => {
+    currentMd = null; currentFile = null; comments = {};
+    document.getElementById('content').style.display = 'none';
+    document.getElementById('content').innerHTML = '';
+    showHome();
+  });
+
+  // ── Folder management ────────────────────────────────────────
+  async function tryRestoreFolder() {
+    try {
+      const h = await dbGet('folderHandle');
+      if (!h) return;
+      const perm = await h.queryPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        folderHandle = h;
+        updateFolderBar();
+      } else {
+        pendingHandle = h;
+        updateFolderBar(); // show "再接続" state
+      }
+    } catch (e) {}
+  }
+
+  async function pickFolder() {
+    try {
+      const h = await window.showDirectoryPicker({ mode: 'readwrite' });
+      folderHandle = h;
+      pendingHandle = null;
+      await dbPut('folderHandle', h);
+      updateFolderBar();
+      await loadLibrary();
+      return h;
+    } catch (e) {
+      if (e.name !== 'AbortError') showToast('フォルダ選択に失敗しました');
+      return null;
+    }
+  }
+
+  async function reconnectFolder() {
+    if (!pendingHandle) return;
+    try {
+      const perm = await pendingHandle.requestPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        folderHandle = pendingHandle;
+        pendingHandle = null;
+        updateFolderBar();
+        await loadLibrary();
+      }
+    } catch (e) {}
+  }
+
+  function updateFolderBar() {
+    const bar  = document.getElementById('folder-bar');
+    const path = document.getElementById('folder-path-text');
+    const btn  = document.getElementById('btn-folder-pick');
+    if (folderHandle) {
+      bar.classList.remove('unset');
+      path.textContent = '📁 ' + folderHandle.name;
+      btn.textContent = '変更';
+    } else if (pendingHandle) {
+      bar.classList.add('unset');
+      path.textContent = pendingHandle.name + '（アクセス許可が必要）';
+      btn.textContent = '再接続';
+    } else {
+      bar.classList.add('unset');
+      path.textContent = '保存フォルダ未設定';
+      btn.textContent = '設定する';
+    }
+  }
+
+  document.getElementById('btn-folder-pick').addEventListener('click', async () => {
+    if (pendingHandle) { await reconnectFolder(); }
+    else               { await pickFolder(); }
+  });
+
+  // ── Folder I/O ───────────────────────────────────────────────
+  async function readIndex() {
+    if (!folderHandle) return [];
+    try {
+      const fh   = await folderHandle.getFileHandle('mdv-index.json');
+      const file = await fh.getFile();
+      return JSON.parse(await file.text());
+    } catch { return []; }
+  }
+
+  async function writeIndex(index) {
+    if (!folderHandle) return;
+    const fh = await folderHandle.getFileHandle('mdv-index.json', { create: true });
+    const w  = await fh.createWritable();
+    await w.write(JSON.stringify(index, null, 2));
+    await w.close();
+  }
+
+  async function saveToFolder() {
+    if (!folderHandle) {
+      const h = await pickFolder();
+      if (!h) return false;
+    }
+    try {
+      // Save MD
+      const mdFh = await folderHandle.getFileHandle(currentFile, { create: true });
+      const mdW  = await mdFh.createWritable();
+      await mdW.write(currentMd);
+      await mdW.close();
+
+      // Save comments
+      const commentsName = currentFile.replace(/\.(md|markdown)$/i, '.comments.json');
+      const cFh = await folderHandle.getFileHandle(commentsName, { create: true });
+      const cW  = await cFh.createWritable();
+      await cW.write(JSON.stringify(comments, null, 2));
+      await cW.close();
+
+      // Update index
+      const index    = await readIndex();
+      const existing = index.findIndex(e => e.filename === currentFile);
+      const preview  = currentMd.replace(/^#+\s*/gm, '').replace(/[*_`#>\[\]]/g, '').trim().slice(0, 120);
+      const entry    = {
+        filename:     currentFile,
+        savedAt:      new Date().toISOString(),
+        commentCount: Object.keys(comments).length,
+        preview
+      };
+      if (existing >= 0) index[existing] = entry;
+      else index.unshift(entry);
+      await writeIndex(index);
+
+      showSavedStatus();
+      return true;
+    } catch (e) {
+      showToast('保存に失敗しました: ' + e.message);
+      return false;
+    }
+  }
+
+  async function loadMdFromFolder(filename) {
+    const fh   = await folderHandle.getFileHandle(filename);
+    const file = await fh.getFile();
+    return file.text();
+  }
+
+  async function loadCommentsFromFolder(filename) {
+    try {
+      const cn   = filename.replace(/\.(md|markdown)$/i, '.comments.json');
+      const fh   = await folderHandle.getFileHandle(cn);
+      const file = await fh.getFile();
+      return JSON.parse(await file.text());
+    } catch { return {}; }
+  }
+
+  // ── Library ──────────────────────────────────────────────────
+  async function loadLibrary() {
+    const grid  = document.getElementById('lib-grid');
+    const empty = document.getElementById('lib-empty');
+    const emptyMsg = document.getElementById('lib-empty-msg');
+    grid.innerHTML = '';
+
+    if (!folderHandle) {
+      empty.style.display = '';
+      emptyMsg.textContent = '保存フォルダを設定してMDを保存すると、ここに表示されます';
+      return;
+    }
+
+    const index = await readIndex();
+    if (!index.length) {
+      empty.style.display = '';
+      emptyMsg.textContent = 'まだ保存されたファイルはありません。MDを開いて「保存」してください';
+      return;
+    }
+
+    empty.style.display = 'none';
+    index.forEach(entry => {
+      const card = document.createElement('div');
+      card.className = 'lib-card';
+
+      const date = new Date(entry.savedAt).toLocaleDateString('ja-JP', {
+        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+      const title = entry.filename.replace(/\.(md|markdown)$/i, '');
+
+      card.innerHTML = `
+        <button class="lib-card-del" title="一覧から削除">✕</button>
+        <div class="lib-card-title">${escapeHtml(title)}</div>
+        <div class="lib-card-meta">
+          ${escapeHtml(date)}
+          ${entry.commentCount ? `<span class="lib-card-comment-badge">💬 ${entry.commentCount}</span>` : ''}
+        </div>
+        <div class="lib-card-preview">${escapeHtml(entry.preview || '')}</div>
+      `;
+      card.querySelector('.lib-card-del').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await removeFromLibrary(entry.filename);
+      });
+      card.addEventListener('click', () => openFromLibrary(entry));
+      grid.appendChild(card);
+    });
+  }
+
+  async function removeFromLibrary(filename) {
+    const index   = await readIndex();
+    const updated = index.filter(e => e.filename !== filename);
+    await writeIndex(updated);
+    await loadLibrary();
+    showToast('一覧から削除しました（ファイル本体は残っています）');
+  }
+
+  async function openFromLibrary(entry) {
+    if (!folderHandle) { showToast('フォルダへのアクセスが必要です'); return; }
+    try {
+      const md  = await loadMdFromFolder(entry.filename);
+      const cmt = await loadCommentsFromFolder(entry.filename);
+      currentFile = entry.filename;
+      currentMd   = md;
+      comments    = cmt;
+      localStorage.setItem(LS_KEY(currentFile), JSON.stringify(comments));
+      document.getElementById('topbar-filename').textContent = entry.filename;
+      showViewer();
+      await render(md);
+    } catch (e) {
+      showToast('ファイルを開けませんでした: ' + e.message);
+    }
+  }
+
+  // ── File open ────────────────────────────────────────────────
+  const fileInput = document.getElementById('file-input');
+  document.getElementById('btn-open-md').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async (e) => {
+    if (e.target.files[0]) await loadFile(e.target.files[0]);
+    fileInput.value = '';
+  });
+
+  async function loadFile(file) {
+    currentFile = file.name;
+    // Load comments: prefer folder, fall back to localStorage
+    if (folderHandle) {
+      comments = await loadCommentsFromFolder(file.name);
+    } else {
+      comments = JSON.parse(localStorage.getItem(LS_KEY(file.name)) || '{}');
+    }
+    document.getElementById('topbar-filename').textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      currentMd = e.target.result;
+      showViewer();
+      await render(currentMd);
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  // ── Drag & drop (home page) ──────────────────────────────────
+  const homeHero = document.getElementById('home-hero');
+  homeHero.addEventListener('dragover', (e) => { e.preventDefault(); homeHero.classList.add('over'); });
+  homeHero.addEventListener('dragleave', (e) => { if (!homeHero.contains(e.relatedTarget)) homeHero.classList.remove('over'); });
+  homeHero.addEventListener('drop', async (e) => {
+    e.preventDefault(); e.stopPropagation(); homeHero.classList.remove('over');
+    const file = e.dataTransfer.files[0];
+    if (file && /\.(md|markdown|txt)$/i.test(file.name)) await loadFile(file);
+  });
+  document.addEventListener('dragover', (e) => e.preventDefault());
+  document.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && /\.(md|markdown|txt)$/i.test(file.name)) await loadFile(file);
+  });
+
+  // ── Save ─────────────────────────────────────────────────────
+  document.getElementById('btn-save').addEventListener('click', saveToFolder);
+  document.getElementById('btn-export').addEventListener('click', exportHtml);
+  document.getElementById('btn-print').addEventListener('click', () => window.print());
+
+  function exportHtml() {
+    if (!currentFile) return;
+
+    // Clone content and strip interactive elements
+    const clone = document.getElementById('content').cloneNode(true);
+    clone.querySelectorAll('.anchor-btn, .comment-toggle-btn, .comment-box-del').forEach(el => el.remove());
+    clone.querySelectorAll('.heading-wrapper').forEach(wrapper => {
+      const h = wrapper.querySelector('h1,h2,h3,h4,h5,h6');
+      if (h) wrapper.replaceWith(h);
+    });
+    clone.querySelectorAll('.comment-box').forEach(box => {
+      box.style.cssText = '';  // let export CSS handle it
+    });
+
+    // Build TOC
+    const tocItems = Array.from(clone.querySelectorAll('h1,h2,h3')).map(h => {
+      const lv = h.tagName.toLowerCase();
+      const indent = lv === 'h2' ? 'padding-left:16px' : lv === 'h3' ? 'padding-left:28px;font-size:12px' : '';
+      return `<a href="#${h.id}" style="display:block;padding:3px 0;${indent};color:inherit;text-decoration:none;opacity:.7;font-size:13px">${escapeHtml(h.textContent)}</a>`;
+    }).join('');
+
+    const hljsHref = document.getElementById('hljs-theme').href;
+    const title    = currentFile.replace(/\.(md|markdown)$/i, '');
+    const isDark   = dark;
+
+    const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${escapeHtml(title)}</title>
+<link rel="stylesheet" href="${escapeHtml(hljsHref)}">
+<style>
+:root{--bg:${isDark?'#0d1117':'#fff'};--bg-sub:${isDark?'#161b22':'#f6f8fa'};--text:${isDark?'#e6edf3':'#24292e'};--muted:${isDark?'#8b949e':'#57606a'};--border:${isDark?'#30363d':'#d0d7de'};--link:${isDark?'#58a6ff':'#0969da'};--heading:${isDark?'#f0f6fc':'#1f2328'};--comment-bg:${isDark?'#272211':'#fff8c5'};--comment-bar:${isDark?'#9e6c00':'#d4a72c'};--code-bg:${isDark?'#161b22':'#f6f8fa'}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;line-height:1.75;color:var(--text);background:var(--bg);display:flex}
+#sidebar{width:240px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg-sub);border-right:1px solid var(--border);padding:24px 16px;font-size:13px;color:var(--muted)}
+#sidebar h2{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;color:var(--muted)}
+#sidebar a:hover{opacity:1!important}
+#main{flex:1;min-width:0;padding:48px 56px 80px;max-width:860px}
+h1,h2,h3,h4{color:var(--heading);line-height:1.35;margin:1.5em 0 .5em}
+h1{font-size:2em;border-bottom:1px solid var(--border);padding-bottom:.3em}
+h2{font-size:1.5em;border-bottom:1px solid var(--border);padding-bottom:.3em}
+h3{font-size:1.25em}h4{font-size:1em}
+p{margin:.75em 0}a{color:var(--link)}img{max-width:100%;border-radius:6px}
+ul,ol{padding-left:2em;margin:.5em 0}li{margin:.2em 0}
+blockquote{border-left:4px solid var(--border);padding:.5em 1em;color:var(--muted);margin:1em 0}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+table{border-collapse:collapse;width:100%;margin:1em 0;font-size:14px}
+th,td{border:1px solid var(--border);padding:7px 12px}
+th{background:var(--bg-sub);font-weight:600;text-align:left}
+tr:nth-child(even) td{background:var(--bg-sub)}
+code{font-family:'SFMono-Regular',Consolas,monospace;font-size:.85em;background:var(--code-bg);border:1px solid var(--border);border-radius:3px;padding:.15em .4em}
+pre{border:1px solid var(--border);border-radius:6px;overflow:hidden;margin:1em 0}
+pre code{background:none;border:none;padding:0;display:block}
+pre code.hljs{padding:16px 14px;font-size:13px}
+.code-wrapper{border:1px solid var(--border);border-radius:6px;overflow:hidden;margin:1em 0}
+.code-header{display:flex;align-items:center;padding:6px 14px;background:var(--border);font-size:12px;color:var(--muted);font-family:'SFMono-Regular',Consolas,monospace}
+.comment-box{background:var(--comment-bg);border-left:3px solid var(--comment-bar);border-radius:0 6px 6px 0;padding:12px 16px;margin:4px 0 20px;font-size:14px;white-space:pre-wrap;color:var(--text)}
+.mermaid{display:flex;justify-content:center;padding:20px;overflow-x:auto}
+@media(max-width:700px){#sidebar{display:none}#main{padding:24px 16px}}
+@media print{#sidebar{display:none}#main{padding:16px}}
+</style>
+</head>
+<body>
+<aside id="sidebar"><h2>目次</h2>${tocItems}</aside>
+<main id="main">${clone.innerHTML}</main>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = title + '.html';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(title + '.html を書き出しました');
+  }
+
+  function showSavedStatus() {
+    const el = document.getElementById('btn-save-status');
+    el.style.display = '';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.display = 'none'; }, 3000);
+  }
+
+  // ── Render ───────────────────────────────────────────────────
+  async function render(md) {
+    const content = document.getElementById('content');
+
+    const isTxt = /\.txt$/i.test(currentFile || '');
+    content.innerHTML = marked.parse(md, { gfm: true, breaks: isTxt });
+
+    processHeadings(content);
+    processMermaid(content);
+    processCodeBlocks(content);
+
+    content.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+    await runMermaid(content);
+
+    content.style.display = 'block';
+    refreshComments();
+    buildToc();
+    initScrollSpy();
+    window.scrollTo(0, 0);
+  }
+
+  async function reRenderMermaid() {
+    const content = document.getElementById('content');
+    if (!content || content.style.display === 'none') return;
+    content.querySelectorAll('.mermaid').forEach(el => {
+      if (el.dataset.src) el.innerHTML = el.dataset.src;
+    });
+    await runMermaid(content);
+  }
+
+  async function runMermaid(content) {
+    const nodes = Array.from(content.querySelectorAll('.mermaid'));
+    if (!nodes.length) return;
+    try { await mermaid.run({ nodes }); } catch (e) { console.warn('Mermaid:', e); }
+  }
+
+  // ── DOM processors ───────────────────────────────────────────
+  function processHeadings(root) {
+    const counts = {};
+    root.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h => {
+      const raw  = h.textContent.trim();
+      let   base = raw.toLowerCase().replace(/[\s　]+/g,'-').replace(/[^\w぀-鿿-]/g,'').replace(/^-+|-+$/g,'') || 'section';
+      let   id   = base;
+      if (counts[base] !== undefined) { counts[base]++; id = base + '-' + counts[base]; }
+      else counts[base] = 0;
+      h.id = id;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'heading-wrapper';
+      wrapper.dataset.sectionId = id;
+      h.parentNode.insertBefore(wrapper, h);
+      wrapper.appendChild(h);
+
+      const anchor = document.createElement('button');
+      anchor.className = 'anchor-btn';
+      anchor.title = 'リンクをコピー';
+      anchor.textContent = '🔗';
+      anchor.dataset.id = id;
+      wrapper.appendChild(anchor);
+
+      const commentBtn = document.createElement('button');
+      commentBtn.className = 'comment-toggle-btn';
+      commentBtn.dataset.sectionId = id;
+      commentBtn.dataset.sectionTitle = raw;
+      commentBtn.textContent = '💬 メモ';
+      wrapper.appendChild(commentBtn);
+    });
+  }
+
+  function processMermaid(root) {
+    root.querySelectorAll('pre code.language-mermaid').forEach(code => {
+      const src = code.textContent;
+      const div = document.createElement('div');
+      div.className = 'mermaid'; div.dataset.src = src; div.textContent = src;
+      code.parentElement.replaceWith(div);
+    });
+  }
+
+  function processCodeBlocks(root) {
+    root.querySelectorAll('pre').forEach(pre => {
+      const code = pre.querySelector('code');
+      if (!code) return;
+      const lc   = Array.from(code.classList).find(c => c.startsWith('language-'));
+      const lang = lc ? lc.replace('language-','') : 'text';
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'code-wrapper';
+      pre.parentNode.insertBefore(wrapper, pre);
+      wrapper.appendChild(pre);
+
+      const header = document.createElement('div');
+      header.className = 'code-header';
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-btn'; copyBtn.textContent = 'コピー';
+      header.innerHTML = `<span>${escapeHtml(lang)}</span>`;
+      header.appendChild(copyBtn);
+      wrapper.insertBefore(header, pre);
+
+      copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(code.textContent).then(() => {
+          copyBtn.textContent = 'コピー完了'; copyBtn.classList.add('copied');
+          setTimeout(() => { copyBtn.textContent = 'コピー'; copyBtn.classList.remove('copied'); }, 1800);
+        });
+      });
+    });
+  }
+
+  // ── Comments ─────────────────────────────────────────────────
+  function saveCommentsLocally() {
+    if (currentFile) localStorage.setItem(LS_KEY(currentFile), JSON.stringify(comments));
+  }
+
+  function refreshComments() {
+    const content = document.getElementById('content');
+    content.querySelectorAll('.comment-box').forEach(el => el.remove());
+    content.querySelectorAll('.comment-toggle-btn').forEach(btn => {
+      const id = btn.dataset.sectionId;
+      if (comments[id]) {
+        btn.classList.add('has-comment');
+        const box = document.createElement('div');
+        box.className = 'comment-box';
+        const textEl = document.createElement('span');
+        textEl.className = 'comment-box-text';
+        textEl.textContent = comments[id];
+        const delBtn = document.createElement('button');
+        delBtn.className = 'comment-box-del';
+        delBtn.title = '削除';
+        delBtn.textContent = '✕';
+        delBtn.addEventListener('click', () => {
+          delete comments[id];
+          saveCommentsLocally();
+          refreshComments();
+        });
+        box.appendChild(textEl);
+        box.appendChild(delBtn);
+        btn.closest('.heading-wrapper').insertAdjacentElement('afterend', box);
+      } else {
+        btn.classList.remove('has-comment');
+      }
+    });
+    document.querySelectorAll('.toc-item').forEach(item => {
+      const id  = item.dataset.id;
+      const dot = item.querySelector('.toc-dot');
+      if (comments[id] && !dot) { const d=document.createElement('span'); d.className='toc-dot'; item.appendChild(d); }
+      else if (!comments[id] && dot) dot.remove();
+    });
+  }
+
+  // Event delegation for heading buttons
+  document.getElementById('content').addEventListener('click', e => {
+    const anchor = e.target.closest('.anchor-btn');
+    if (anchor) {
+      const url = location.href.split('#')[0] + '#' + anchor.dataset.id;
+      navigator.clipboard.writeText(url).then(() => {
+        anchor.textContent = '✓';
+        setTimeout(() => { anchor.textContent = '🔗'; }, 1600);
+      });
+      return;
+    }
+    const commentBtn = e.target.closest('.comment-toggle-btn');
+    if (commentBtn) openModal(commentBtn.dataset.sectionId, commentBtn.dataset.sectionTitle);
+  });
+
+  // ── TOC ──────────────────────────────────────────────────────
+  function buildToc() {
+    const toc = document.getElementById('toc');
+    toc.innerHTML = '';
+    document.querySelectorAll('#content h1,#content h2,#content h3').forEach(h => {
+      const id  = h.id;
+      const lv  = h.tagName.toLowerCase();
+      const li  = document.createElement('li');
+      const a   = document.createElement('a');
+      a.className = 'toc-item ' + lv; a.dataset.id = id; a.href = '#' + id;
+      const sp  = document.createElement('span'); sp.className = 'toc-text'; sp.textContent = h.textContent;
+      a.appendChild(sp); li.appendChild(a); toc.appendChild(li);
+      a.addEventListener('click', e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior:'smooth' }); });
+    });
+    refreshComments();
+  }
+
+  function initScrollSpy() {
+    if (scrollObserver) scrollObserver.disconnect();
+    scrollObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        document.querySelectorAll('.toc-item.active').forEach(el => el.classList.remove('active'));
+        document.querySelector(`.toc-item[data-id="${entry.target.id}"]`)?.classList.add('active');
+      });
+    }, { rootMargin: '-52px 0px -65% 0px', threshold: 0 });
+    document.querySelectorAll('#content h1,#content h2,#content h3').forEach(h => scrollObserver.observe(h));
+  }
+
+  // ── Comment modal ────────────────────────────────────────────
+  function openModal(id, title) {
+    modalSectionId = id;
+    document.getElementById('modal-heading').textContent = title;
+    document.getElementById('modal-textarea').value = comments[id] || '';
+    document.getElementById('btn-delete').style.display = comments[id] ? '' : 'none';
+    document.getElementById('modal-overlay').classList.add('open');
+    setTimeout(() => document.getElementById('modal-textarea').focus(), 50);
+  }
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+    modalSectionId = null;
+  }
+
+  document.getElementById('btn-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+  document.getElementById('btn-modal-save').addEventListener('click', () => {
+    const text = document.getElementById('modal-textarea').value.trim();
+    if (text) comments[modalSectionId] = text;
+    else      delete comments[modalSectionId];
+    saveCommentsLocally();
+    refreshComments();
+    closeModal();
+  });
+  document.getElementById('btn-delete').addEventListener('click', () => {
+    delete comments[modalSectionId];
+    saveCommentsLocally();
+    refreshComments();
+    closeModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('modal-overlay').classList.contains('open')) return;
+    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) document.getElementById('btn-modal-save').click();
+  });
+
+  // ── Toast ────────────────────────────────────────────────────
+  let _toastT = null;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(_toastT);
+    _toastT = setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  // ── Utilities ────────────────────────────────────────────────
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── AI Config ────────────────────────────────────────────────
+  const AI_DEFAULTS = {
+    openai:   { model: 'gpt-4o-mini',       hint: '推奨: gpt-4o-mini / gpt-4o' },
+    gemini:   { model: 'gemini-1.5-flash',   hint: '推奨: gemini-1.5-flash / gemini-1.5-pro' },
+    lmstudio: { model: '',                   hint: 'LM Studioで読み込んでいるモデル名を入力' },
+    none:     { model: '',                   hint: '' }
+  };
+  const AI_KEY_LINKS = {
+    openai: 'https://platform.openai.com/api-keys',
+    gemini: 'https://aistudio.google.com/app/apikey'
+  };
+  const AI_PROVIDER_LABELS = { openai: 'OpenAI', gemini: 'Gemini', lmstudio: 'LM Studio' };
+
+  let aiConfig = (() => {
+    try { return JSON.parse(localStorage.getItem('mdv_ai') || 'null') || { provider: 'none', apiKey: '', model: '', baseUrl: 'http://localhost:1234/v1' }; }
+    catch { return { provider: 'none', apiKey: '', model: '', baseUrl: 'http://localhost:1234/v1' }; }
+  })();
+
+  function saveAiConfig() { localStorage.setItem('mdv_ai', JSON.stringify(aiConfig)); }
+
+  function updateAiUi() {
+    const active = aiConfig.provider !== 'none';
+    document.getElementById('btn-ai-toggle').style.display = active ? '' : 'none';
+    document.getElementById('ai-panel-provider').textContent = AI_PROVIDER_LABELS[aiConfig.provider] || '';
+  }
+
+  // Settings modal open/close
+  function openAiSettings() {
+    const p = aiConfig.provider || 'none';
+    const radio = document.querySelector(`input[name="ai-provider"][value="${p}"]`);
+    if (radio) radio.checked = true;
+    document.getElementById('ai-api-key').value = aiConfig.apiKey || '';
+    document.getElementById('ai-model').value   = aiConfig.model || '';
+    document.getElementById('ai-base-url').value= aiConfig.baseUrl || 'http://localhost:1234/v1';
+    syncSettingsForm(p);
+    document.getElementById('ai-settings-overlay').classList.add('open');
+  }
+  function closeAiSettings() { document.getElementById('ai-settings-overlay').classList.remove('open'); }
+
+  function syncSettingsForm(provider) {
+    // Highlight selected card
+    document.querySelectorAll('.ai-provider-item').forEach(el => el.classList.remove('selected'));
+    const card = document.getElementById('prov-' + provider);
+    if (card) card.classList.add('selected');
+    // Show/hide fields
+    const needKey = provider === 'openai' || provider === 'gemini';
+    const needUrl = provider === 'lmstudio';
+    document.getElementById('ai-key-field').style.display   = needKey ? '' : 'none';
+    document.getElementById('ai-url-field').style.display   = needUrl ? '' : 'none';
+    document.getElementById('ai-model-field').style.display = provider === 'none' ? 'none' : '';
+    // API key link
+    const keyLink = document.getElementById('ai-key-link');
+    keyLink.href = AI_KEY_LINKS[provider] || '#';
+    keyLink.style.display = AI_KEY_LINKS[provider] ? '' : 'none';
+    // Model hint + default
+    const def = AI_DEFAULTS[provider] || {};
+    document.getElementById('ai-model-hint').textContent = def.hint || '';
+    if (!document.getElementById('ai-model').value || Object.values(AI_DEFAULTS).some(d => d.model === document.getElementById('ai-model').value)) {
+      document.getElementById('ai-model').value = def.model || '';
+    }
+  }
+
+  document.querySelectorAll('input[name="ai-provider"]').forEach(r =>
+    r.addEventListener('change', () => syncSettingsForm(r.value))
+  );
+  // Click on card also selects radio
+  document.querySelectorAll('.ai-provider-item').forEach(card =>
+    card.addEventListener('click', () => {
+      const r = card.querySelector('input[type="radio"]');
+      if (r) { r.checked = true; syncSettingsForm(r.value); }
+    })
+  );
+
+  document.getElementById('btn-ai-settings-home').addEventListener('click', openAiSettings);
+  document.getElementById('btn-ai-settings').addEventListener('click', openAiSettings);
+  document.getElementById('btn-ai-settings-close').addEventListener('click', closeAiSettings);
+  document.getElementById('btn-ai-cancel').addEventListener('click', closeAiSettings);
+  document.getElementById('ai-settings-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('ai-settings-overlay')) closeAiSettings();
+  });
+
+  document.getElementById('btn-ai-save').addEventListener('click', () => {
+    const provider = document.querySelector('input[name="ai-provider"]:checked')?.value || 'none';
+    aiConfig = {
+      provider,
+      apiKey:   document.getElementById('ai-api-key').value.trim(),
+      model:    document.getElementById('ai-model').value.trim() || AI_DEFAULTS[provider]?.model || '',
+      baseUrl:  document.getElementById('ai-base-url').value.trim() || 'http://localhost:1234/v1'
+    };
+    saveAiConfig();
+    updateAiUi();
+    closeAiSettings();
+    showToast(provider === 'none' ? 'AI設定をクリアしました' : `AI設定を保存しました（${AI_PROVIDER_LABELS[provider]}）`);
+  });
+
+  // AI Panel
+  document.getElementById('btn-ai-toggle').addEventListener('click', () =>
+    document.getElementById('ai-panel').classList.toggle('open')
+  );
+  document.getElementById('btn-ai-panel-close').addEventListener('click', () =>
+    document.getElementById('ai-panel').classList.remove('open')
+  );
+
+  // MD をトークン数に配慮して切り詰める（目安: 1文字≒0.4トークン、上限6000文字≒1500トークン）
+  const MAX_MD_CHARS = 6000;
+  function trimMd(md) {
+    if (!md) return '（MDが読み込まれていません）';
+    if (md.length <= MAX_MD_CHARS) return md;
+    return md.slice(0, MAX_MD_CHARS) + `\n\n...[長いため省略 (${md.length}文字中${MAX_MD_CHARS}文字を使用)]`;
+  }
+
+  // Quick actions
+  document.querySelectorAll('.ai-quick-btn').forEach(btn =>
+    btn.addEventListener('click', () => {
+      const prompts = {
+        summary: 'このMarkdownドキュメントを日本語で簡潔に要約してください:\n\n',
+        bullets: 'このMarkdownドキュメントの重要なポイントを日本語の箇条書き（5点以内）でまとめてください:\n\n'
+      };
+      callAiAndShow((prompts[btn.dataset.action] || '') + trimMd(currentMd));
+    })
+  );
+
+  document.getElementById('btn-ai-send').addEventListener('click', () => {
+    const prompt = document.getElementById('ai-prompt').value.trim();
+    if (!prompt) return;
+    const ctx = currentMd ? `\n\n【参照中のMD】\n${trimMd(currentMd)}` : '';
+    callAiAndShow(prompt + ctx);
+  });
+
+  // シンキングモデルの <think>...</think> タグや余計なプレフィックスを除去
+  function cleanAiResponse(text) {
+    return text
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')  // Qwen3等のthinkingブロック
+      .replace(/^[\s​]+/, '')                 // 先頭の空白・ゼロ幅スペース
+      .trim();
+  }
+
+  async function callAiAndShow(prompt) {
+    const loading  = document.getElementById('ai-loading');
+    const respArea = document.getElementById('ai-response-area');
+    const respText = document.getElementById('ai-response-text');
+    loading.style.display  = 'block';
+    respArea.style.display = 'none';
+    try {
+      const raw    = await callAi(prompt);
+      const result = cleanAiResponse(raw);
+      respText.textContent   = result;
+      respArea.style.display = 'flex';
+      document.getElementById('btn-ai-insert').style.display = '';
+    } catch (e) {
+      respText.textContent   = '⚠️ エラー: ' + e.message;
+      respArea.style.display = 'flex';
+    } finally {
+      loading.style.display = 'none';
+    }
+  }
+
+  async function callAi(prompt) {
+    const { provider, apiKey, model, baseUrl } = aiConfig;
+    if (provider === 'openai' || provider === 'lmstudio') {
+      const normalizedBase = baseUrl.replace(/\/+$/, '').replace(/\/v1$/, '') + '/v1';
+      const url  = provider === 'lmstudio' ? `${normalizedBase}/chat/completions` : 'https://api.openai.com/v1/chat/completions';
+      const hdrs = { 'Content-Type': 'application/json' };
+      if (apiKey) hdrs['Authorization'] = 'Bearer ' + apiKey;
+
+      // LM Studio: モデル名を自動取得
+      let resolvedModel = model;
+      if (provider === 'lmstudio' && !resolvedModel) {
+        try {
+          const mRes  = await fetch(`${normalizedBase}/models`);
+          const mData = await mRes.json();
+          resolvedModel = mData?.data?.[0]?.id || '';
+        } catch { /* ignore */ }
+      }
+
+      let res;
+      try {
+        const body = { messages: [{ role: 'user', content: prompt }] };
+        if (resolvedModel) body.model = resolvedModel;
+        res = await fetch(url, { method: 'POST', headers: hdrs, body: JSON.stringify(body) });
+      } catch {
+        if (provider === 'lmstudio') throw new Error('LM Studio に接続できません。\nLocal Server タブで Start Server を押し、モデルが読み込まれているか確認してください。');
+        throw new Error('ネットワークエラー。インターネット接続を確認してください。');
+      }
+      if (!res.ok) {
+        const raw = await res.text().catch(() => '');
+        const e   = (() => { try { return JSON.parse(raw); } catch { return null; } })();
+        const msg = e?.error?.message || e?.message || raw.slice(0, 400) || `HTTP ${res.status}`;
+        throw new Error(`HTTP ${res.status}: ${msg}\n送信モデル名: "${resolvedModel}"`);
+      }
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (content === undefined || content === null) {
+        throw new Error('レスポンス形式が不正です。\nレスポンス: ' + JSON.stringify(data).slice(0, 200));
+      }
+      return content;
+    }
+    if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-flash'}:generateContent?key=${apiKey}`;
+      let res;
+      try {
+        res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+      } catch {
+        throw new Error('Gemini APIに接続できません。インターネット接続を確認してください。');
+      }
+      if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.error?.message || `APIエラー HTTP ${res.status}`); }
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text === undefined || text === null) {
+        throw new Error('レスポンス形式が不正です。\nレスポンス: ' + JSON.stringify(data).slice(0, 200));
+      }
+      return text;
+    }
+    throw new Error('プロバイダーが設定されていません。AI設定ボタンから設定してください。');
+  }
+
+  // 接続テスト（LM Studio用）
+  document.getElementById('btn-ai-test').addEventListener('click', async () => {
+    const baseUrl = document.getElementById('ai-base-url').value.trim() || 'http://localhost:1234/v1';
+    const result  = document.getElementById('ai-test-result');
+    result.style.display = '';
+    result.style.color   = 'var(--text-muted)';
+    result.textContent   = '接続確認中...';
+    try {
+      const normalizedBase = baseUrl.replace(/\/+$/, '').replace(/\/v1$/, '') + '/v1';
+      const res = await fetch(`${normalizedBase}/models`, { method: 'GET' });
+      if (res.ok) {
+        const data   = await res.json();
+        const models = data.data?.map(m => m.id).join(', ') || '（モデル情報取得済み）';
+        result.style.color = '#1a7f37';
+        result.textContent = `✅ 接続成功。読み込み中のモデル: ${models}`;
+      } else {
+        result.style.color = '#cf222e';
+        result.textContent = `❌ サーバーエラー HTTP ${res.status}`;
+      }
+    } catch {
+      result.style.color = '#cf222e';
+      result.textContent = '❌ 接続できません。LM Studio の Local Server が起動しているか確認してください。';
+    }
+  });
+
+  document.getElementById('btn-ai-copy').addEventListener('click', () => {
+    const text = document.getElementById('ai-response-text').textContent;
+    navigator.clipboard.writeText(text).then(() => showToast('コピーしました'));
+  });
+
+  document.getElementById('btn-ai-insert').addEventListener('click', async () => {
+    const text = document.getElementById('ai-response-text').textContent;
+    if (!text || !currentMd) return;
+    currentMd += '\n\n---\n\n' + text;
+    await render(currentMd);
+    showToast('AIの回答をMDに追記しました');
+  });
+
+  // ── Init ─────────────────────────────────────────────────────
+  mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default' });
+  applyTheme();
+  updateAiUi();
+  showHome();
+  tryRestoreFolder().then(() => loadLibrary());
+
+})();
+</script>
+</body>
+</html>
